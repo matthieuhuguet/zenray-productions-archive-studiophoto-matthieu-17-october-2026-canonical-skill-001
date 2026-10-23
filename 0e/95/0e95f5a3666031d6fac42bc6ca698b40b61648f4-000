@@ -1,0 +1,46 @@
+---
+name: zenray-studio-photos
+description: Retoucher une photo de profil en minutes, de la photo brute au portrait final : masque de la personne (Apple Vision), peau ancrée sur l'original, fond gris, couleur unie ou dégradé radial, formats 1:1 4:5 16:9 9:16, outil à curseurs HTML et rendu pleine résolution aux mêmes formules, mise en ligne sur le site et archivage Assets. Utiliser pour toute photo de profil, portrait pro, changement de fond ou de teint, planche de portraits générés par IA, ou quand Matthieu dit « photo de profil », « change le fond », « dégradé », « studio photo », « index avec sliders pour ma photo ».
+---
+
+# ZenRay Studio Photos (23 October 2026)
+
+Skill né de la conversation du 17 au 23 octobre 2026 (projet Assets `studiophoto-matthieu-17-october-2026`). Il range en un endroit tout le protocole qui a produit le portrait du site : on repart de cet atelier au lieu de le refaire. Protocole complet, mesures et pièges : [Protocol.md](references/Protocol.md). (23 October 2026)
+
+## Démarrer en une commande (23 October 2026)
+
+```zsh
+python3 ~/.claude/skills/zenray-studio-photos/scripts/NewStudioPhoto.py <atelier> <photo> [<photo> ...] [--ids 1 2 ...] [--bg-mode red|gray|color|radial]
+```
+
+- L'atelier est un dossier TMP daté, `~/.claude/tmp/tmp-<nom>-<jour>-<mois-en-anglais>-<année>`, ouvert d'abord par `BeginProject.mjs` (skill `zenray-assets`). Les photos sont copiées dans `Sources/` et jamais modifiées. (23 October 2026)
+- La commande copie les scripts dans `<atelier>/Scripts`, compile `Segment` et `Face` (Apple Vision, `swiftc`), écrit les masques `Masks/Src<id>_person.png` et `_face.json`, `Sources.json`, `Presets.json`, puis construit `Index/index.html`. (23 October 2026)
+- Une planche de portraits (grille 2 × 2 d'une IA) se découpe d'abord : `python3 scripts/SplitGrid.py <grille.png> <dossier> --rows 2 --cols 2`. Les séparateurs blancs sont mesurés, pas devinés ; sur `matthieu10.png` le résultat égale octet pour octet la découpe faite à la main (624 × 622). (23 October 2026)
+
+## La boucle de travail (23 October 2026)
+
+1. Servir l'index en local (`python3 -m http.server <port> --bind 127.0.0.1` dans `Index/`) et l'ouvrir dans le navigateur INTERNE seulement ; il démarre sur la vue debug rouge pour contrôler le masque. (23 October 2026)
+2. Matthieu règle aux curseurs puis « Copier les valeurs ». Ne jamais deviner une valeur visuelle. (23 October 2026)
+3. `python3 <atelier>/Scripts/Compose.py '<valeurs>' [sortie.png]` rend la pleine résolution et, si les valeurs portent `formats`, les quatre formats à côté. (23 October 2026)
+4. Montrer les images à Matthieu à CHAQUE essai (règle du 20 October 2026), avec la planche des formats. (23 October 2026)
+5. Index final : `BuildPicker.py --sources <ids> --out Index/index-<nom>_<date>.html --presets <Presets>.json`, puis `node ~/.claude/skills/zenray-edit/scripts/file-design.mjs <atelier> --slug <slug> --title "<titre>" --module skin-bg-picker --project <id-assets>`. (23 October 2026)
+6. Archivage : `zenray-assets` (inventaire, archive, reçus SHA-256 relus sur GitHub) ; `FEEDBACK.md` par `feedback.py add`. (23 October 2026)
+
+## Fonds disponibles (HDA, tous paramétrés) (23 October 2026)
+
+| Mode | Paramètres | Usage |
+|---|---|---|
+| `red` | `red_hue_shift_deg`, `red_saturation` | vue debug du masque |
+| `gray` | `gray_tone` (Neutre, Chaud, Froid, Ardoise, Taupe), `level`, `gradient`, `tint` | fond sobre, Taupe 35 % retenu le 17 October 2026 |
+| `color` | `color` (hex), `color_light`, `color_gradient` | couleur unie, exacte à `color_gradient` 0 |
+| `radial` | `color` (centre), `color_edge`, `grad_cx`, `grad_cy`, `grad_radius` (en hauteurs d'image), `grad_curve`, `color_light`, `color_gradient` | dégradé centre vers extérieur mélangé en OKLab |
+
+Le navigateur et Python donnent les mêmes pixels (vérifié le 23 October 2026 : écart 0 sur le rendu radial, sur cinq points lus dans le canvas). Ajouter un mode demande de l'écrire dans `Compose.py` ET dans le gabarit, puis de refaire cette comparaison. (23 October 2026)
+
+## Règles qui ne bougent plus (23 October 2026)
+
+- Peau : ancrée sur l'original, jamais éclaircie ni jaunie à l'œil (les premiers looks ajoutaient +0,04 à +0,07 de L et +7 degrés, d'où « trop blanche »). Mesurer L, chroma et teinte avant et après. (17 October 2026)
+- Le champ `source` des valeurs copiées doit être celui de l'image affichée : vérifier dans l'outil, et à la moindre ambiguïté (« la dernière photo ») nommer la source avant de rendre. (21 October 2026)
+- Un fichier ambigu se nomme avant de le déployer sur le site : une photo a déjà été publiée à la place d'une autre. (18 October 2026)
+- Mise en ligne sur matthieuhuguet.com : skill `zenray-website` (`public/me.webp` avec `?v=<sha10>`, worktree propre sur `origin/master`, relecture des données en ligne). (23 October 2026)
+- La typographie embarquée dans le gabarit date du 18 October 2026 (Medium 500) ; la règle du 21 October 2026 donne Anthropic Serif Regular 400 pour le corps. À aligner si l'outil change de refonte visuelle. (23 October 2026)

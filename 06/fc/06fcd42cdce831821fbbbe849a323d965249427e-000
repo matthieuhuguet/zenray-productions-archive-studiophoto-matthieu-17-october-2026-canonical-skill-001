@@ -1,0 +1,46 @@
+# Protocole studio photo, tiré de la conversation du 17 au 23 October 2026 (23 October 2026)
+
+Projet Assets : `studiophoto-matthieu-17-october-2026`. Mémoire : `/Users/zenray/.claude/Memory1/Projects/studiophoto-matthieu-17-october-2026/` (Project1.md, FEEDBACK.md, Rules.md). Atelier d'origine : `/Users/zenray/.claude/tmp/tmp-studiophoto-matthieu-17-october-2026/`. (23 October 2026)
+
+## 1. Choisir parmi les photos (17 October 2026)
+
+- Planche comparative à résolution native (`scripts/Grid.py`), une image par proposition ; les retours de Matthieu se donnent en image annotée (cercle rouge) plutôt qu'en description. (17 October 2026)
+- Sept photos d'origine sont déplacées de Downloads vers `Sources/` (Downloads reste vide). (17 October 2026)
+
+## 2. Étalonnage « photographe » (17 October 2026)
+
+- `scripts/Grade2.py` avec `Grades-v2.json` et `Grades-v3.json` : balance des blancs prise sur la chemise, courbe de luminance filmique, contrôle OKLab de la peau et du fond, virage partiel, clarté, grain. Toutes les valeurs vivent dans le JSON. `scripts/SkinStats.py` mesure le teint (médiane L, chroma, teinte) dans la boîte du visage. (17 October 2026)
+- Échec payé : les premiers looks rendaient la peau « trop blanche » (+0,04 à +0,07 de L, +7 degrés de teinte). Correction : ancrer la peau sur l'original au lieu de la régler à l'œil. (17 October 2026)
+
+## 3. Masque et visage (17 October 2026)
+
+- `scripts/Segment.swift` (VNGeneratePersonSegmentationRequest, qualité `.accurate`) donne le masque ; `scripts/Face.swift` (VNDetectFaceLandmarksRequest) donne la boîte du visage et les yeux, en pixels, origine en haut à gauche. Le masque est identique d'une machine à l'autre pour une même image (écart 0 mesuré le 23 October 2026). (23 October 2026)
+
+## 4. L'outil à curseurs et son rendu (17 October 2026)
+
+- Pourquoi la vue debug plaît : l'overlay divise le rouge par deux, ce qui assombrit la peau (environ 0,09 de L) et baisse sa saturation (73 %). Le curseur « bleu vers naturel » garde ces deux décalages globaux et ne rend à la peau que sa teinte d'origine ; une ellipse de visage reprend lèvres et menton, trop peu chromatiques pour le masque de couleur. (17 October 2026)
+- Curseurs : `skin.blue_to_natural`, `hue_fine_deg`, `saturation`, `light` ; `shirt.cast_to_neutral` ; `frame.crop_bottom` (le bras de la photo 5 commence à 3,3 % du bas, 4 % retenus) ; fonds (SKILL.md). Formats : `formats.zoom`, `eye_line` (0,38), `x_shift`. Bouton « Copier les valeurs », champ « Coller des valeurs ». (17 October 2026)
+- `Compose.py` applique les mêmes formules en pleine résolution ; parité navigateur contre Python mesurée à 0,3 sur 255 au plus (moyennes par zone, 17 October 2026) et à 0 sur le rendu radial (23 October 2026). `BuildPicker.py` embarque aperçus, masques et polices en base64 : fichier autonome. (23 October 2026)
+- Choix de Matthieu le 17 October 2026 : photo 5, fond Taupe 35 %, peau naturelle saturation 1,28, bras recadré 4 %. Valeurs : `{"skin":{"blue_to_natural":1,"saturation":1.28,"light":-0.005},"shirt":{"cast_to_neutral":1},"frame":{"crop_bottom":0.04},"bg":{"mode":"gray","gray_tone":"Taupe","level":0.35,"gradient":1,"tint":1}}`. (23 October 2026)
+
+## 5. Images générées par IA (18 October 2026)
+
+- Prompt de génération conservé mot pour mot : [PromptGeneration.md](PromptGeneration.md) (grille 2 × 2 du sujet en première image, photo d'éclairage en seconde, fond anthracite, t-shirt blanc, identité du visage préservée). (18 October 2026)
+- La planche reçue se découpe par `SplitGrid.py` ; Matthieu a choisi l'image 2 (haut droite), 624 × 622, source `10`. La planche est petite : les formats sortent plus petits que ceux de la photo 5. (18 October 2026)
+
+## 6. Fond en couleur et dégradé (21 et 23 October 2026)
+
+- `color` : mesuré, fond rendu médian (246, 108, 0) pour `#f66c00`, écart max 2 sur 255, identique dans le navigateur. Valeurs de Matthieu le 21 October 2026 : saturation 1,5, lumière +0,02, fond `#e8714e`. (21 October 2026)
+- `radial` (23 October 2026) : centre `#ffa000`, extérieur `#ff5c02`, centre X 50 %, Y 40 %, rayon 0,9 hauteur, courbe 1, photo 10. Coins mesurés (255,115,2), mélange en OKLab, distance en hauteurs d'image. (23 October 2026)
+- Défaut corrigé le 21 October 2026 : les valeurs copiées annonçaient toujours `"source":"5"`, car `DEFAULTS` écrasait la source chargée ; le gabarit écrit désormais la source en dernier. (21 October 2026)
+
+## 7. Mise en ligne et archive (17 et 23 October 2026)
+
+- Site : `matthieuhuguet.com`, `public/me.webp` depuis le 1:1, couleur (décision du 17 October 2026), URL versionnée `?v=<sha10>` pour contourner les 4 h de cache du navigateur ; déploiement depuis un worktree propre basé sur `origin/master`. Détail : skill `zenray-website`. (17 October 2026)
+- Archive : Assets (`Client.mjs inventory` puis `archive`), reçu SHA-256 par fichier relu sur GitHub. Le service Assets a été réparé le 21 October 2026 (voir `zenray-assets`, sections du 21 October 2026). (23 October 2026)
+
+## 8. Limites connues (23 October 2026)
+
+- Ouverture de l'outil en double-clic (file://) non testée : le navigateur interne refuse `file://`, servir en localhost. (23 October 2026)
+- Lisibilité en petit format (LinkedIn, 400 px) non testée. (17 October 2026)
+- `Segment` et `Face` se compilent par `swiftc` au premier lancement, ce qui suppose les outils Xcode en ligne de commande. (23 October 2026)

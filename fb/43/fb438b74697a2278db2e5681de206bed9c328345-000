@@ -1,0 +1,43 @@
+# Start a studio-photo workshop from the skill: folders, scripts, masks, face boxes, presets and the slider tool, in one command. 23 October 2026
+# FR : crée un atelier de photo de studio : dossiers, scripts, masques de personne, boîtes de visage, valeurs de départ et outil à curseurs.
+# Usage: python3 NewStudioPhoto.py <workshop-dir> <image> [<image> ...] [--ids 1 2 ...] [--bg-mode red|gray|color|radial]
+# The workshop is a normal ZenRay Assets TMP folder (tmp-<name>-<day>-<month>-<year>). Images are copied into Sources/ (never modified), ids default to 1, 2, 3...
+# The scripts are COPIED into <workshop>/Scripts so the folder keeps working alone (Compose.py derives its root from its own location).
+import argparse, json, os, shutil, subprocess, sys
+
+HERE = os.path.dirname(os.path.abspath(__file__)); SKILL = os.path.dirname(HERE)
+ap = argparse.ArgumentParser(); ap.add_argument("workshop"); ap.add_argument("images", nargs="+"); ap.add_argument("--ids", nargs="*"); ap.add_argument("--bg-mode", default="red")
+ar = ap.parse_args()
+ids = ar.ids or [str(i + 1) for i in range(len(ar.images))]
+if len(ids) != len(ar.images): sys.exit("--ids must have one id per image")
+W = os.path.abspath(ar.workshop)
+for d in ("Scripts", "Sources", "Masks", "Preview", "Composed", "Index"): os.makedirs(f"{W}/{d}", exist_ok=True)
+for f in os.listdir(HERE):
+    if f.endswith((".py", ".swift")) and f != "NewStudioPhoto.py": shutil.copy2(f"{HERE}/{f}", f"{W}/Scripts/{f}")
+shutil.copy2(f"{SKILL}/templates/SkinBgPicker.template.html", f"{W}/Scripts/SkinBgPicker.template.html")
+for f in ("Grades-v2.json", "Grades-v3.json"):
+    if not os.path.exists(f"{W}/{f}"): shutil.copy2(f"{SKILL}/templates/{f}", f"{W}/{f}")
+
+def need(binary):   # compile the Apple Vision helpers once (a few seconds); the binaries are rebuilt, never copied between machines
+    exe = f"{W}/Scripts/{binary}"
+    if not os.path.exists(exe): subprocess.run(["swiftc", "-O", f"{exe}.swift", "-o", exe], check=True)
+    return exe
+seg, face = need("Segment"), need("Face")
+
+sources = {}
+for sid, img in zip(ids, ar.images):
+    dst = f"{W}/Sources/{os.path.basename(img)}"
+    if os.path.abspath(img) != dst and not os.path.exists(dst): shutil.copy2(img, dst)
+    sources[sid] = f"Sources/{os.path.basename(img)}"
+    subprocess.run([seg, dst, f"{W}/Masks/Src{sid}_person.png"], check=True)
+    subprocess.run([face, dst, f"{W}/Masks/Src{sid}_face.json"], check=True)
+    print("ready", sid, dst)
+json.dump(sources, open(f"{W}/Sources.json", "w"), indent=2)
+
+presets = json.load(open(f"{SKILL}/templates/Presets.json"))
+presets["_doc"] = "Created by NewStudioPhoto.py. Starts on the first source with the red debug background so the mask can be checked before any tuning."
+presets["start"] = {"source": ids[0], "skin": {"blue_to_natural": 1, "hue_fine_deg": 0, "saturation": 1.0, "light": 0.0}, "shirt": {"cast_to_neutral": 1}, "frame": {"crop_bottom": 0},
+                    "bg": {"mode": ar.bg_mode}}
+json.dump(presets, open(f"{W}/Presets.json", "w"), indent=2, ensure_ascii=False)
+subprocess.run([sys.executable, f"{W}/Scripts/BuildPicker.py", "--sources", *ids, "--out", "Index/index.html", "--presets", "Presets.json"], check=True)
+print("\nOpen", f"{W}/Index/index.html", "through a local server, tune, copy the values, then:\n  python3", f"{W}/Scripts/Compose.py", "'<values>'", "[out.png]")
